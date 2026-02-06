@@ -3,13 +3,20 @@ class EventBus extends Phaser.Events.EventEmitter {}
 class AudioManager {
   constructor(scene) {
     this.scene = scene;
-    this.context = scene.sound.context;
-    this.masterGain = this.context.createGain();
-    this.masterGain.connect(this.context.destination);
-    this.bgmGain = this.context.createGain();
-    this.bgmGain.connect(this.masterGain);
-    this.sfxGain = this.context.createGain();
-    this.sfxGain.connect(this.masterGain);
+    this.context = scene.sound?.context || null;
+    this.isAvailable = Boolean(this.context && this.context.createGain);
+    if (this.isAvailable) {
+      this.masterGain = this.context.createGain();
+      this.masterGain.connect(this.context.destination);
+      this.bgmGain = this.context.createGain();
+      this.bgmGain.connect(this.masterGain);
+      this.sfxGain = this.context.createGain();
+      this.sfxGain.connect(this.masterGain);
+    } else {
+      this.masterGain = null;
+      this.bgmGain = null;
+      this.sfxGain = null;
+    }
     this.isMuted = false;
     this.bgmInterval = null;
     this.bgmNodes = [];
@@ -17,12 +24,14 @@ class AudioManager {
 
   setMuted(muted) {
     this.isMuted = muted;
-    this.masterGain.gain.value = muted ? 0 : 1;
+    if (this.masterGain) {
+      this.masterGain.gain.value = muted ? 0 : 1;
+    }
     localStorage.setItem("fatemil-muted", muted ? "1" : "0");
   }
 
   playTone({ freq = 440, duration = 0.2, type = "sine", gain = 0.2, detune = 0 }) {
-    if (this.isMuted) {
+    if (!this.isAvailable || this.isMuted) {
       return;
     }
     const osc = this.context.createOscillator();
@@ -59,7 +68,7 @@ class AudioManager {
   }
 
   startBgm() {
-    if (this.bgmInterval) {
+    if (!this.isAvailable || this.bgmInterval) {
       return;
     }
     const pattern = [220, 262, 294, 330, 294, 262, 196, 220];
@@ -866,7 +875,9 @@ class GameManager {
       if (!this.audioManager) {
         this.audioManager = new AudioManager(bootScene);
       }
-      this.audioManager.context.resume();
+      if (this.audioManager.context?.state === "suspended") {
+        this.audioManager.context.resume();
+      }
       this.audioManager.setMuted(this.getMutedState());
       this.audioManager.playSfx("uiClick");
       this.audioManager.startBgm();
