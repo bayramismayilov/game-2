@@ -470,14 +470,15 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player.container, true, 0.08, 0.08);
     this.cameras.main.setBounds(0, 0, 2000, 600);
 
-    this.honeyTrail = this.add.particles(0, 0, "particle", {
+    this.honeyParticles = this.add.particles(0, 0, "particle");
+    this.honeyEmitter = this.honeyParticles.createEmitter({
       speed: { min: 20, max: 60 },
       lifespan: 400,
       quantity: 2,
       scale: { start: 0.6, end: 0 },
       blendMode: "ADD"
     });
-    this.honeyTrail.stop();
+    this.honeyEmitter.stop();
 
     this.vignette = this.add.rectangle(400, 300, 800, 600, 0x000000, 0.4);
     this.vignette.setScrollFactor(0);
@@ -645,7 +646,7 @@ class GameScene extends Phaser.Scene {
   applyPowerUp(type) {
     if (type === "Honey") {
       this.audioManager.playSfx("powerupHoney");
-      this.honeyTrail.startFollow(this.player.container);
+      this.honeyEmitter.startFollow(this.player.container);
     }
     if (type === "Eggs") {
       this.audioManager.playSfx("powerupEggs");
@@ -660,7 +661,7 @@ class GameScene extends Phaser.Scene {
   }
 
   clearPowerUp() {
-    this.honeyTrail.stop();
+    this.honeyEmitter.stop();
     this.vignette.setVisible(false);
   }
 
