@@ -15,6 +15,7 @@ const overlay = document.getElementById("overlay");
 const overlayTitle = document.getElementById("overlay-title");
 const overlayMessage = document.getElementById("overlay-message");
 const restartBtn = document.getElementById("restart");
+const backgroundTrack = document.getElementById("bgm");
 
 let gameWidth = canvas ? canvas.width : 0;
 let gameHeight = canvas ? canvas.height : 0;
@@ -61,6 +62,7 @@ const badItems = [
 
 let audioContext = null;
 let soundEnabled = false;
+let backgroundAudioReady = false;
 
 const rand = (min, max) => Math.random() * (max - min) + min;
 
@@ -99,6 +101,33 @@ const initAudio = () => {
     audioContext.resume();
   }
   soundEnabled = true;
+  if (backgroundTrack && !backgroundAudioReady) {
+    backgroundTrack.volume = 0.35;
+    backgroundTrack.loop = true;
+    backgroundAudioReady = true;
+  }
+};
+
+const startBackgroundMusic = () => {
+  if (!backgroundTrack || !soundEnabled) {
+    return;
+  }
+  backgroundTrack.play().catch(() => {});
+};
+
+const pauseBackgroundMusic = () => {
+  if (!backgroundTrack) {
+    return;
+  }
+  backgroundTrack.pause();
+};
+
+const stopBackgroundMusic = () => {
+  if (!backgroundTrack) {
+    return;
+  }
+  backgroundTrack.pause();
+  backgroundTrack.currentTime = 0;
 };
 
 const playTone = (frequency, duration, type = "sine", volume = 0.2) => {
@@ -187,6 +216,7 @@ const resetGame = () => {
   overlay.classList.add("hidden");
   restartBtn.textContent = "Play Again";
   updateHud();
+  startBackgroundMusic();
   playTone(440, 0.18, "triangle", 0.2);
 };
 
@@ -273,6 +303,7 @@ const advanceRound = () => {
     overlay.classList.add("hidden");
     awaitingNextRound = false;
     isRunning = true;
+    startBackgroundMusic();
     playTone(520, 0.16, "triangle", 0.2);
   } else {
     endGame(true, "Congrats! You helped Emil to be healthy.");
@@ -282,6 +313,7 @@ const advanceRound = () => {
 const endGame = (won, message) => {
   isRunning = false;
   awaitingNextRound = false;
+  stopBackgroundMusic();
   const title = won ? "Victory!" : "Game Over";
   showOverlay(title, message);
   restartBtn.textContent = "Play Again";
@@ -356,6 +388,7 @@ const loop = (timestamp) => {
       } else {
         isRunning = false;
         awaitingNextRound = true;
+        pauseBackgroundMusic();
         const nextRound = rounds[roundIndex + 1];
         showOverlay(
           "Round Cleared!",
