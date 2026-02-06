@@ -2,7 +2,8 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 const scoreEl = document.getElementById("score");
-const livesEl = document.getElementById("lives");
+const roundEl = document.getElementById("round");
+const targetEl = document.getElementById("target");
 const timeEl = document.getElementById("time");
 const overlay = document.getElementById("overlay");
 const overlayTitle = document.getElementById("overlay-title");
@@ -11,75 +12,157 @@ const restartBtn = document.getElementById("restart");
 
 const GAME_WIDTH = canvas.width;
 const GAME_HEIGHT = canvas.height;
-const TARGET_SCORE = 10;
+const ROUND_TIME = 60;
+const rounds = [
+  { name: "Easy", targetScore: 25, goodCount: 7, badCount: 3 },
+  { name: "Medium", targetScore: 40, goodCount: 9, badCount: 4 },
+  { name: "Impossible", targetScore: 60, goodCount: 11, badCount: 5 }
+];
 
 const keys = new Set();
 let lastTime = 0;
 let elapsed = 0;
 let isRunning = true;
+let roundIndex = 0;
+let roundTimeRemaining = ROUND_TIME;
+let awaitingNextRound = false;
 
 const player = {
   x: 120,
   y: 280,
-  radius: 16,
+  radius: 18,
   speed: 220
 };
 
 let score = 0;
-let lives = 3;
 
-const stars = [];
-const rocks = [];
+const items = [];
+
+const goodItems = [
+  { name: "Strawberry", color: "#ff6b6b" },
+  { name: "Steak", color: "#c44536" },
+  { name: "Eggs", color: "#ffe8a3" },
+  { name: "Honey", color: "#f6c453" }
+];
+
+const badItems = [
+  { name: "Hamburger", color: "#f4a261" },
+  { name: "Fries", color: "#e9c46a" },
+  { name: "Coca-Cola", color: "#6d213c" }
+];
+
+let audioContext = null;
+let soundEnabled = false;
 
 const rand = (min, max) => Math.random() * (max - min) + min;
 
 const resetPlayer = () => {
   player.x = 120;
   player.y = 280;
+  player.radius = 18;
 };
 
-const spawnStars = () => {
-  stars.length = 0;
-  for (let i = 0; i < TARGET_SCORE; i += 1) {
-    stars.push({
+const initAudio = () => {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
+  }
+  soundEnabled = true;
+};
+
+const playTone = (frequency, duration, type = "sine", volume = 0.2) => {
+  if (!soundEnabled || !audioContext) {
+    return;
+  }
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  oscillator.type = type;
+  oscillator.frequency.value = frequency;
+  gain.gain.value = volume;
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+  oscillator.start();
+  oscillator.stop(audioContext.currentTime + duration);
+};
+
+const playExplosion = () => {
+  if (!soundEnabled || !audioContext) {
+    return;
+  }
+  const duration = 0.7;
+  const bufferSize = audioContext.sampleRate * duration;
+  const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i += 1) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+  }
+  const noise = audioContext.createBufferSource();
+  const filter = audioContext.createBiquadFilter();
+  const gain = audioContext.createGain();
+  noise.buffer = buffer;
+  filter.type = "lowpass";
+  filter.frequency.value = 800;
+  gain.gain.value = 0.6;
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioContext.destination);
+  noise.start();
+};
+
+const spawnItems = () => {
+  items.length = 0;
+  const currentRound = rounds[roundIndex];
+  const totalGood = currentRound.goodCount;
+  const totalBad = currentRound.badCount;
+  for (let i = 0; i < totalGood; i += 1) {
+    const type = goodItems[i % goodItems.length];
+    items.push({
       x: rand(160, GAME_WIDTH - 40),
       y: rand(60, GAME_HEIGHT - 40),
-      radius: 10,
-      wobble: rand(0, Math.PI * 2)
+      radius: 12,
+      wobble: rand(0, Math.PI * 2),
+      kind: "good",
+      label: type.name,
+      color: type.color
     });
   }
-};
-
-const spawnRocks = () => {
-  rocks.length = 0;
-  const rockCount = 5;
-  for (let i = 0; i < rockCount; i += 1) {
-    rocks.push({
+  for (let i = 0; i < totalBad; i += 1) {
+    const type = badItems[i % badItems.length];
+    items.push({
       x: rand(200, GAME_WIDTH - 60),
-      y: rand(60, GAME_HEIGHT - 60),
-      radius: rand(14, 20),
-      vx: rand(-70, 70),
-      vy: rand(-70, 70)
+      y: rand(80, GAME_HEIGHT - 60),
+      radius: 14,
+      wobble: rand(0, Math.PI * 2),
+      kind: "bad",
+      label: type.name,
+      color: type.color
     });
   }
 };
 
 const resetGame = () => {
   score = 0;
-  lives = 3;
   elapsed = 0;
   isRunning = true;
+  roundIndex = 0;
+  roundTimeRemaining = ROUND_TIME;
+  awaitingNextRound = false;
   resetPlayer();
-  spawnStars();
-  spawnRocks();
+  spawnItems();
   overlay.classList.add("hidden");
+  restartBtn.textContent = "Play Again";
   updateHud();
+  playTone(440, 0.18, "triangle", 0.2);
 };
 
 const updateHud = () => {
+  const roundData = rounds[roundIndex];
   scoreEl.textContent = score;
-  livesEl.textContent = lives;
-  timeEl.textContent = elapsed.toFixed(1);
+  roundEl.textContent = `${roundIndex + 1} / ${rounds.length} (${roundData.name})`;
+  targetEl.textContent = roundData.targetScore;
+  timeEl.textContent = roundTimeRemaining.toFixed(1);
 };
 
 const showOverlay = (title, message) => {
@@ -122,46 +205,44 @@ const handleInput = (delta) => {
   player.y = Math.min(Math.max(player.radius, player.y), GAME_HEIGHT - player.radius);
 };
 
-const updateRocks = (delta) => {
-  const step = delta / 1000;
-  rocks.forEach((rock) => {
-    rock.x += rock.vx * step;
-    rock.y += rock.vy * step;
-
-    if (rock.x < rock.radius || rock.x > GAME_WIDTH - rock.radius) {
-      rock.vx *= -1;
-    }
-    if (rock.y < rock.radius || rock.y > GAME_HEIGHT - rock.radius) {
-      rock.vy *= -1;
+const checkCollisions = () => {
+  items.forEach((item, index) => {
+    if (isColliding(player, item)) {
+      items.splice(index, 1);
+      if (item.kind === "good") {
+        score += 5;
+        playTone(640, 0.12, "sine", 0.18);
+      } else {
+        player.radius += 6;
+        playExplosion();
+        endGame(false, "Come on! You are making Emil fat ass!!!");
+      }
+      updateHud();
     }
   });
 };
 
-const checkCollisions = () => {
-  stars.forEach((star, index) => {
-    if (isColliding(player, star)) {
-      stars.splice(index, 1);
-      score += 1;
-      updateHud();
-    }
-  });
-
-  rocks.forEach((rock) => {
-    if (isColliding(player, rock)) {
-      lives -= 1;
-      resetPlayer();
-      updateHud();
-      if (lives <= 0) {
-        isRunning = false;
-        showOverlay("Game Over", "The rocks got you. Try again!");
-      }
-    }
-  });
-
-  if (score >= TARGET_SCORE) {
-    isRunning = false;
-    showOverlay("You Win!", `You collected ${TARGET_SCORE} stars in ${elapsed.toFixed(1)}s.`);
+const advanceRound = () => {
+  if (roundIndex < rounds.length - 1) {
+    roundIndex += 1;
+    roundTimeRemaining = ROUND_TIME;
+    resetPlayer();
+    spawnItems();
+    overlay.classList.add("hidden");
+    awaitingNextRound = false;
+    isRunning = true;
+    playTone(520, 0.16, "triangle", 0.2);
+  } else {
+    endGame(true, "Congrats! You helped Emil to be healthy.");
   }
+};
+
+const endGame = (won, message) => {
+  isRunning = false;
+  awaitingNextRound = false;
+  const title = won ? "Victory!" : "Game Over";
+  showOverlay(title, message);
+  restartBtn.textContent = "Play Again";
 };
 
 const drawBackground = () => {
@@ -188,32 +269,23 @@ const drawPlayer = () => {
   ctx.fill();
 };
 
-const drawStars = (time) => {
-  stars.forEach((star) => {
-    star.wobble += 0.04;
-    const pulse = Math.sin(star.wobble + time / 500) * 2;
-
-    ctx.fillStyle = "#ffd166";
+const drawItems = (time) => {
+  items.forEach((item) => {
+    item.wobble += 0.04;
+    const pulse = Math.sin(item.wobble + time / 500) * 2;
+    ctx.fillStyle = item.color;
     ctx.beginPath();
-    ctx.arc(star.x, star.y, star.radius + pulse * 0.15, 0, Math.PI * 2);
+    ctx.arc(item.x, item.y, item.radius + pulse * 0.15, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
     ctx.lineWidth = 2;
     ctx.stroke();
-  });
-};
 
-const drawRocks = () => {
-  rocks.forEach((rock) => {
-    ctx.fillStyle = "#8a8f9e";
-    ctx.beginPath();
-    ctx.arc(rock.x, rock.y, rock.radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "#545a6a";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+    ctx.font = "10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(item.label, item.x, item.y - item.radius - 6);
   });
 };
 
@@ -226,14 +298,31 @@ const loop = (timestamp) => {
 
   if (isRunning) {
     elapsed += delta / 1000;
+    roundTimeRemaining = Math.max(0, roundTimeRemaining - delta / 1000);
     handleInput(delta);
-    updateRocks(delta);
     checkCollisions();
+
+    const currentRound = rounds[roundIndex];
+    if (score >= currentRound.targetScore) {
+      if (roundIndex === rounds.length - 1) {
+        endGame(true, "Congrats! You helped Emil to be healthy.");
+      } else {
+        isRunning = false;
+        awaitingNextRound = true;
+        showOverlay(
+          "Round Cleared!",
+          `You hit ${currentRound.targetScore} points. Get ready for ${rounds[roundIndex + 1]?.name}!`
+        );
+        restartBtn.textContent = "Start Next Round";
+        playTone(720, 0.2, "triangle", 0.24);
+      }
+    } else if (roundTimeRemaining <= 0) {
+      endGame(false, "Come on! You are making Emil fat ass!!!");
+    }
   }
 
   drawBackground();
-  drawStars(timestamp);
-  drawRocks();
+  drawItems(timestamp);
   drawPlayer();
   updateHud();
 
@@ -241,6 +330,9 @@ const loop = (timestamp) => {
 };
 
 window.addEventListener("keydown", (event) => {
+  if (!soundEnabled) {
+    initAudio();
+  }
   keys.add(event.key);
 });
 
@@ -249,7 +341,14 @@ window.addEventListener("keyup", (event) => {
 });
 
 restartBtn.addEventListener("click", () => {
-  resetGame();
+  if (!soundEnabled) {
+    initAudio();
+  }
+  if (awaitingNextRound) {
+    advanceRound();
+  } else {
+    resetGame();
+  }
 });
 
 resetGame();

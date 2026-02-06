@@ -3,19 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Star Collector</title>
+  <title>FatEmil</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="hud">
     <div class="hud-left">
-      <h1>Star Collector</h1>
-      <p>Move with WASD or arrow keys. Collect 10 stars. Avoid rocks.</p>
+      <h1>FatEmil</h1>
+      <p>Move with WASD or arrow keys. Collect healthy food for points and avoid junk food.</p>
+      <p class="hud-note">Sound starts on your first key press or click.</p>
     </div>
     <div class="hud-right">
       <div>Score: <span id="score">0</span></div>
-      <div>Lives: <span id="lives">3</span></div>
-      <div>Time: <span id="time">0.0</span>s</div>
+      <div>Round: <span id="round">1 / 3</span></div>
+      <div>Target: <span id="target">0</span></div>
+      <div>Time Left: <span id="time">60.0</span>s</div>
     </div>
   </header>
 
