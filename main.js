@@ -1,5 +1,10 @@
 const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+const ctx = canvas ? canvas.getContext("2d") : null;
+const errorPanel = document.createElement("div");
+errorPanel.style.color = "#ffd166";
+errorPanel.style.marginTop = "12px";
+errorPanel.style.fontSize = "14px";
+errorPanel.style.textAlign = "center";
 
 const scoreEl = document.getElementById("score");
 const roundEl = document.getElementById("round");
@@ -10,8 +15,8 @@ const overlayTitle = document.getElementById("overlay-title");
 const overlayMessage = document.getElementById("overlay-message");
 const restartBtn = document.getElementById("restart");
 
-const GAME_WIDTH = canvas.width;
-const GAME_HEIGHT = canvas.height;
+let gameWidth = canvas ? canvas.width : 0;
+let gameHeight = canvas ? canvas.height : 0;
 const ROUND_TIME = 60;
 const rounds = [
   { name: "Easy", targetScore: 25, goodCount: 7, badCount: 3 },
@@ -55,6 +60,22 @@ let audioContext = null;
 let soundEnabled = false;
 
 const rand = (min, max) => Math.random() * (max - min) + min;
+
+const resizeCanvas = () => {
+  if (!canvas || !ctx) {
+    return;
+  }
+  const { width, height } = canvas.getBoundingClientRect();
+  if (width === 0 || height === 0) {
+    return;
+  }
+  const scale = window.devicePixelRatio || 1;
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  gameWidth = width;
+  gameHeight = height;
+};
 
 const resetPlayer = () => {
   player.x = 120;
@@ -119,8 +140,8 @@ const spawnItems = () => {
   for (let i = 0; i < totalGood; i += 1) {
     const type = goodItems[i % goodItems.length];
     items.push({
-      x: rand(160, GAME_WIDTH - 40),
-      y: rand(60, GAME_HEIGHT - 40),
+      x: rand(160, gameWidth - 40),
+      y: rand(60, gameHeight - 40),
       radius: 12,
       wobble: rand(0, Math.PI * 2),
       kind: "good",
@@ -131,8 +152,8 @@ const spawnItems = () => {
   for (let i = 0; i < totalBad; i += 1) {
     const type = badItems[i % badItems.length];
     items.push({
-      x: rand(200, GAME_WIDTH - 60),
-      y: rand(80, GAME_HEIGHT - 60),
+      x: rand(200, gameWidth - 60),
+      y: rand(80, gameHeight - 60),
       radius: 14,
       wobble: rand(0, Math.PI * 2),
       kind: "bad",
@@ -201,8 +222,8 @@ const handleInput = (delta) => {
     player.y += (dy / length) * speed;
   }
 
-  player.x = Math.min(Math.max(player.radius, player.x), GAME_WIDTH - player.radius);
-  player.y = Math.min(Math.max(player.radius, player.y), GAME_HEIGHT - player.radius);
+  player.x = Math.min(Math.max(player.radius, player.x), gameWidth - player.radius);
+  player.y = Math.min(Math.max(player.radius, player.y), gameHeight - player.radius);
 };
 
 const checkCollisions = () => {
@@ -247,13 +268,13 @@ const endGame = (won, message) => {
 
 const drawBackground = () => {
   ctx.fillStyle = "#0d1224";
-  ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  ctx.fillRect(0, 0, gameWidth, gameHeight);
 
-  const gradient = ctx.createLinearGradient(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  const gradient = ctx.createLinearGradient(0, 0, gameWidth, gameHeight);
   gradient.addColorStop(0, "rgba(255, 255, 255, 0.08)");
   gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  ctx.fillRect(0, 0, gameWidth, gameHeight);
 };
 
 const drawPlayer = () => {
@@ -309,9 +330,10 @@ const loop = (timestamp) => {
       } else {
         isRunning = false;
         awaitingNextRound = true;
+        const nextRound = rounds[roundIndex + 1];
         showOverlay(
           "Round Cleared!",
-          `You hit ${currentRound.targetScore} points. Get ready for ${rounds[roundIndex + 1]?.name}!`
+          `You hit ${currentRound.targetScore} points. Get ready for ${nextRound ? nextRound.name : "the next round"}!`
         );
         restartBtn.textContent = "Start Next Round";
         playTone(720, 0.2, "triangle", 0.24);
@@ -351,5 +373,15 @@ restartBtn.addEventListener("click", () => {
   }
 });
 
-resetGame();
-requestAnimationFrame(loop);
+if (!canvas || !ctx) {
+  const hud = document.querySelector(".hud-left");
+  if (hud) {
+    errorPanel.textContent = "Canvas failed to load. Please refresh or try another browser.";
+    hud.appendChild(errorPanel);
+  }
+} else {
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
+  resetGame();
+  requestAnimationFrame(loop);
+}
