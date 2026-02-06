@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FatEmil - Nilay App</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <div id="menu-overlay" class="overlay active">
+    <div class="overlay-panel">
+      <h1>Nilay App</h1>
+      <p>Upload your picture to create your own game character</p>
+      <label for="player-name">Please enter your name</label>
+      <input id="player-name" type="text" placeholder="Your name" maxlength="16" />
+      <label for="player-face">Upload your photo</label>
+      <input id="player-face" type="file" accept="image/*" />
+      <div class="button-row">
+        <button id="default-face">Use Default Face</button>
+        <button id="start-game" disabled>Start</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="hud" class="hud hidden">
+    <div class="hud-left">
+      <div>Score: <span id="hud-score">0</span></div>
+      <div>Size: <span id="hud-size">1.00x</span></div>
+      <div>Power-up: <span id="hud-power">None</span> <span id="hud-power-timer"></span></div>
+      <div>Combo: <span id="hud-combo">0</span> <span id="hud-combo-timer"></span></div>
+      <div>GOOD: <span id="hud-good">0</span>/5</div>
+    </div>
+    <div class="hud-right">
+      <button id="mute-toggle">Mute</button>
+    </div>
+  </div>
+
+  <div id="game-over" class="overlay hidden">
+    <div class="overlay-panel">
+      <h2>Game Over</h2>
+      <div class="button-row">
+        <button id="restart-game">Restart</button>
+        <button id="back-to-menu">Main Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="results" class="overlay hidden">
+    <div class="overlay-panel">
+      <h2>Level Complete!</h2>
+      <p>Final Score: <span id="final-score">0</span></p>
+      <p>Max Combo Streak: <span id="final-combo">0</span></p>
+      <div class="button-row">
+        <button id="restart-level">Restart</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
