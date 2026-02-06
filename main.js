@@ -841,7 +841,7 @@ class GameManager {
       reader.onload = () => {
         const img = new Image();
         img.onload = () => {
-          this.faceCanvas = this.cropToSquare(img);
+          this.setFaceCanvas(this.cropToSquare(img), "face-upload");
           updateStartState();
         };
         img.src = reader.result;
@@ -850,7 +850,7 @@ class GameManager {
     });
 
     defaultBtn.addEventListener("click", () => {
-      this.faceCanvas = this.generateDefaultFace();
+      this.setFaceCanvas(this.generateDefaultFace(), "default-face");
       updateStartState();
     });
 
@@ -921,14 +921,21 @@ class GameManager {
     return localStorage.getItem("fatemil-muted") === "1";
   }
 
-  registerFaceTexture() {
-    const scene = this.game.scene.getScene("BootScene");
-    const key = "face-upload";
-    if (scene.textures.exists(key)) {
-      scene.textures.remove(key);
-    }
-    scene.textures.addCanvas(key, this.faceCanvas);
+  setFaceCanvas(canvas, key) {
+    this.faceCanvas = canvas;
     this.faceTextureKey = key;
+    this.registerFaceTexture();
+  }
+
+  registerFaceTexture() {
+    if (!this.faceCanvas || !this.game) {
+      return;
+    }
+    const key = this.faceTextureKey || "face-upload";
+    if (this.game.textures.exists(key)) {
+      this.game.textures.remove(key);
+    }
+    this.game.textures.addCanvas(key, this.faceCanvas);
   }
 
   cropToSquare(image) {
@@ -948,8 +955,18 @@ class GameManager {
     canvas.width = 128;
     canvas.height = 128;
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#ffdfb0";
+    ctx.fillStyle = "#f4c99c";
     ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = "#f0b56f";
+    ctx.beginPath();
+    ctx.arc(64, 16, 52, Math.PI, 2 * Math.PI);
+    ctx.fill();
+    ctx.fillStyle = "#d39b4e";
+    ctx.beginPath();
+    ctx.moveTo(18, 30);
+    ctx.quadraticCurveTo(64, 0, 110, 28);
+    ctx.quadraticCurveTo(64, 18, 18, 30);
+    ctx.fill();
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
     ctx.arc(40, 50, 12, 0, Math.PI * 2);
@@ -960,11 +977,26 @@ class GameManager {
     ctx.arc(40, 50, 6, 0, Math.PI * 2);
     ctx.arc(88, 50, 6, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = "#6b2f1f";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(30, 38);
+    ctx.quadraticCurveTo(40, 32, 50, 38);
+    ctx.moveTo(78, 38);
+    ctx.quadraticCurveTo(88, 32, 98, 38);
+    ctx.stroke();
     ctx.strokeStyle = "#7a3e00";
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.arc(64, 80, 24, 0, Math.PI);
     ctx.stroke();
+    ctx.fillStyle = "#a7583a";
+    ctx.beginPath();
+    ctx.moveTo(64, 62);
+    ctx.lineTo(58, 80);
+    ctx.lineTo(70, 80);
+    ctx.closePath();
+    ctx.fill();
     return canvas;
   }
 
