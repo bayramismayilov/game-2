@@ -44,16 +44,16 @@ let score = 0;
 const items = [];
 
 const goodItems = [
-  { name: "Strawberry", color: "#ff6b6b" },
-  { name: "Steak", color: "#c44536" },
-  { name: "Eggs", color: "#ffe8a3" },
-  { name: "Honey", color: "#f6c453" }
+  { name: "Strawberry", icon: "🍓", color: "#ff6b6b" },
+  { name: "Steak", icon: "🥩", color: "#c44536" },
+  { name: "Eggs", icon: "🥚", color: "#ffe8a3" },
+  { name: "Honey", icon: "🍯", color: "#f6c453" }
 ];
 
 const badItems = [
-  { name: "Hamburger", color: "#f4a261" },
-  { name: "Fries", color: "#e9c46a" },
-  { name: "Coca-Cola", color: "#6d213c" }
+  { name: "Hamburger", icon: "🍔", color: "#f4a261" },
+  { name: "Fries", icon: "🍟", color: "#e9c46a" },
+  { name: "Coca-Cola", icon: "🥤", color: "#6d213c" }
 ];
 
 let audioContext = null;
@@ -146,7 +146,8 @@ const spawnItems = () => {
       wobble: rand(0, Math.PI * 2),
       kind: "good",
       label: type.name,
-      color: type.color
+      color: type.color,
+      icon: type.icon
     });
   }
   for (let i = 0; i < totalBad; i += 1) {
@@ -158,7 +159,8 @@ const spawnItems = () => {
       wobble: rand(0, Math.PI * 2),
       kind: "bad",
       label: type.name,
-      color: type.color
+      color: type.color,
+      icon: type.icon
     });
   }
 };
@@ -299,14 +301,19 @@ const drawItems = (time) => {
     ctx.arc(item.x, item.y, item.radius + pulse * 0.15, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+    ctx.lineWidth = 1.5;
     ctx.stroke();
+
+    ctx.font = "22px 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(item.icon, item.x, item.y);
 
     ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
     ctx.font = "10px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(item.label, item.x, item.y - item.radius - 6);
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(item.label, item.x, item.y - item.radius - 8);
   });
 };
 
