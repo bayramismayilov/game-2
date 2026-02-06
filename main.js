@@ -10,6 +10,7 @@ const scoreEl = document.getElementById("score");
 const roundEl = document.getElementById("round");
 const targetEl = document.getElementById("target");
 const timeEl = document.getElementById("time");
+const livesEl = document.getElementById("lives");
 const overlay = document.getElementById("overlay");
 const overlayTitle = document.getElementById("overlay-title");
 const overlayMessage = document.getElementById("overlay-message");
@@ -40,6 +41,8 @@ const player = {
 };
 
 let score = 0;
+let lives = 3;
+let badItemsEaten = 0;
 
 const items = [];
 
@@ -81,6 +84,11 @@ const resetPlayer = () => {
   player.x = 120;
   player.y = 280;
   player.radius = 18;
+};
+
+const resetPlayerPosition = () => {
+  player.x = 120;
+  player.y = 280;
 };
 
 const initAudio = () => {
@@ -172,6 +180,8 @@ const resetGame = () => {
   roundIndex = 0;
   roundTimeRemaining = ROUND_TIME;
   awaitingNextRound = false;
+  lives = 3;
+  badItemsEaten = 0;
   resetPlayer();
   spawnItems();
   overlay.classList.add("hidden");
@@ -186,6 +196,9 @@ const updateHud = () => {
   roundEl.textContent = `${roundIndex + 1} / ${rounds.length} (${roundData.name})`;
   targetEl.textContent = roundData.targetScore;
   timeEl.textContent = roundTimeRemaining.toFixed(1);
+  if (livesEl) {
+    livesEl.textContent = lives;
+  }
 };
 
 const showOverlay = (title, message) => {
@@ -236,9 +249,15 @@ const checkCollisions = () => {
         score += 5;
         playTone(640, 0.12, "sine", 0.18);
       } else {
+        badItemsEaten += 1;
+        lives = Math.max(0, 3 - badItemsEaten);
         player.radius += 6;
-        playExplosion();
-        endGame(false, "Come on! You are making Emil fat ass!!!");
+        if (badItemsEaten >= 3) {
+          playExplosion();
+          endGame(false, "Boom! Emil ate too much junk food.");
+        } else {
+          playTone(220, 0.14, "square", 0.18);
+        }
       }
       updateHud();
     }
@@ -249,7 +268,7 @@ const advanceRound = () => {
   if (roundIndex < rounds.length - 1) {
     roundIndex += 1;
     roundTimeRemaining = ROUND_TIME;
-    resetPlayer();
+    resetPlayerPosition();
     spawnItems();
     overlay.classList.add("hidden");
     awaitingNextRound = false;
